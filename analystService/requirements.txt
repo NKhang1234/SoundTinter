@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pika          # RabbitMQ client
+requests      # API calls
+python-dotenv # Optional for env config
+pyacrcloud    # Python SDK ACRCloud
+python-multipart

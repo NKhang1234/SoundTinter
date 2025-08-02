@@ -24,5 +24,13 @@ services:
     env_file:
       - .env
 
+  analyst-service:
+    build: ./analystService
+    container_name: analyst-service
+    ports:
+      - "8002:8002"
+    env_file:
+      - .env
+
 volumes:
   minio_data:
