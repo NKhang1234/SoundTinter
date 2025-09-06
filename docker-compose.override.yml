@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  filter-service:
+    build:
+      context: ./filterService
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./filterService:/app
+
+  analyst-service:
+    build:
+      context: ./analystService
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./analystService:/app

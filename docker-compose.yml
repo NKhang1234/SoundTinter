@@ -13,9 +13,26 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+  
+  # rabbitmq:
+  #   image: rabbitmq:3-management
+  #   container_name: rabbitmq
+  #   ports:
+  #     - "5672:5672"    # For app communication
+  #     - "15672:15672"  # For web UI
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: admin
+  #     RABBITMQ_DEFAULT_PASS: admin
+  #     RABBITMQ_LOAD_DEFINITIONS: /etc/rabbitmq/definitions.json
+  #   volumes:
+  #     - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json
+  #     - ./rabbitmq/init_users.sh:/docker-entrypoint-init.d/init_users.sh
+  #     - ./.env:/etc/rabbitmq/.env   # 💡 Mount .env inside the container
 
   filter-service:
-    build: ./filterService
+    build:
+      context: ./filterService
+      dockerfile: Dockerfile
     container_name: filter-service
     ports:
       - "8003:8003"
@@ -25,10 +42,14 @@ services:
       - .env
 
   analyst-service:
-    build: ./analystService
+    build:
+      context: ./analystService
+      dockerfile: Dockerfile
     container_name: analyst-service
     ports:
       - "8002:8002"
+    depends_on:
+      - minio
     env_file:
       - .env
 

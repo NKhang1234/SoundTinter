@@ -2,10 +2,11 @@ from fastapi import FastAPI, Query, Response, HTTPException
 import numpy as np
 import cv2
 
-from s3_utils import download_image_from_s3
+from s3_utils import ImageBucket
 from filters import FILTER_MAP
 
 app = FastAPI()
+imgBucket = ImageBucket()
 
 # Temporary hardcoded song-to-filter mapping
 SONG_FILTER_MAP = {
@@ -27,7 +28,7 @@ def apply_filter(song_id: str = Query(...), image_id: str = Query(...)):
 
     # Download image from MinIO
     try:
-        image_bytes = download_image_from_s3(image_id)
+        image_bytes = imgBucket.download_image_from_s3(image_id)
         image_np = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Image not found in MinIO: {str(e)}")
