@@ -18,7 +18,7 @@ SONG_FILTER_MAP = {
     "song6": "cold"
 }
 
-@app.get("/apply_filter/")
+@app.get("/test/apply_filter")
 def apply_filter(song_id: str = Query(...), image_id: str = Query(...)):
     # Get filter type from hardcoded map - Simluate call API from MappingService
     filter_type = SONG_FILTER_MAP.get(song_id, "sepia")  # default to sepia

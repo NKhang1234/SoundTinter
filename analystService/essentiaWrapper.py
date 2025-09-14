@@ -3,14 +3,11 @@ import os
 import essentia.standard as es
 from exceptions import EssentiaExtractorError, TempFileWritingError
 import json
+from decimal import Decimal
 
 class EssentiaExtractor:
-    def __init__(self, profile_path: str = "songProfile.yaml"):
-        # Configure which statistics you want
-        if not os.path.exists(profile_path):
-            raise FileNotFoundError(f"Essentia profile not found: {profile_path}")
-
-        self.extractor = es.MusicExtractor(profile=profile_path)
+    def __init__(self):
+        self.extractor = es.MusicExtractor(lowlevelStats=['mean', 'stdev'])
 
         # Define only the features we want to keep
         self.allowed_features = {
@@ -26,15 +23,21 @@ class EssentiaExtractor:
         Recursively convert an Essentia Pool into a native Python dict.
         Handles lists, arrays, and nested structures.
         """
+        def convert_value(value):
+            if isinstance(value, float):
+                return Decimal(str(value))
+            elif isinstance(value, (list, tuple)):
+                return [convert_value(x) for x in value]
+            elif hasattr(value, "tolist"):
+                return convert_value(value.tolist())
+            else:
+                return value
+
         result = {}
         for key in pool.descriptorNames():
             if key in self.allowed_features: # Filter only neccessary features
                 value = pool[key]
-                # Convert numpy arrays to list
-                if hasattr(value, "tolist"):
-                    result[key] = value.tolist()
-                else:
-                    result[key] = value
+                result[key] = convert_value(value)
         return result
 
     def extract_from_bytes(self, audio_bytes: bytes, suffix=".wav") -> dict:

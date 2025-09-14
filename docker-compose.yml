@@ -1,33 +1,16 @@
-version: '3.8'
-
 services:
-  minio:
-    image: quay.io/minio/minio
-    container_name: minio
+  analyst-service:
+    build:
+      context: ./analystService
+      dockerfile: Dockerfile
+    container_name: analyst-service
     ports:
-      - "9000:9000"    # S3 API
-      - "9001:9001"    # Web console
+      - "8002:8002"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-  
-  # rabbitmq:
-  #   image: rabbitmq:3-management
-  #   container_name: rabbitmq
-  #   ports:
-  #     - "5672:5672"    # For app communication
-  #     - "15672:15672"  # For web UI
-  #   environment:
-  #     RABBITMQ_DEFAULT_USER: admin
-  #     RABBITMQ_DEFAULT_PASS: admin
-  #     RABBITMQ_LOAD_DEFINITIONS: /etc/rabbitmq/definitions.json
-  #   volumes:
-  #     - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json
-  #     - ./rabbitmq/init_users.sh:/docker-entrypoint-init.d/init_users.sh
-  #     - ./.env:/etc/rabbitmq/.env   # 💡 Mount .env inside the container
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_KEY}
+    env_file:
+      - .env
 
   filter-service:
     build:
@@ -36,22 +19,21 @@ services:
     container_name: filter-service
     ports:
       - "8003:8003"
-    depends_on:
-      - minio
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_KEY}
     env_file:
       - .env
 
-  analyst-service:
+  upload-service:
     build:
-      context: ./analystService
+      context: ./uploadService
       dockerfile: Dockerfile
-    container_name: analyst-service
+    container_name: upload-service
     ports:
-      - "8002:8002"
-    depends_on:
-      - minio
+      - "8004:8004"
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_KEY}
     env_file:
       - .env
-
-volumes:
-  minio_data:
