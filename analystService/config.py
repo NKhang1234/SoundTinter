@@ -3,18 +3,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# RabbitMQ
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
-RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "songs_queue")
-
-# ACRCloud
-ACRCLOUD_HOST = os.getenv("ACRCLOUD_HOST")
-ACRCLOUD_KEY = os.getenv("ACRCLOUD_KEY")
-ACRCLOUD_SECRET = os.getenv("ACRCLOUD_SECRET")
-
-# Spotify
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+# APP ENV
+APP_ENV = os.getenv("APP_ENV")
+LOGGING_LEVEL = os.getenv("LOGGING_LEVEL")
 
 # AWS
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY", "defaultValue")
@@ -30,3 +21,12 @@ DYNAMODB_ENDPOINT_URL = os.getenv("DYNAMODB_ENDPOINT_URL")
 DYNAMODB_TABLE_NAME = "featureSongs"
 DYNAMODB_PARTITION_KEY = "userID"
 DYNAMODB_SORT_KEY = "songName"
+
+# RabbitMQ (dev)
+RBMQ_USER = os.getenv("RABBITMQ_DEFAULT_USER")
+RBMQ_PASSWORD = os.getenv("RABBITMQ_DEFAULT_PASS")
+RBMQ_PORT = os.getenv("RABBITMQ_PORT")
+RBMQ_FWD_QUEUE = os.getenv("RABBITMQ_FORWARD_QUEUE")
+RBMQ_BWD_QUEUE = os.getenv("RABBITMQ_BACKWARD_QUEUE")
+
+

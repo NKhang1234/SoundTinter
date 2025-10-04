@@ -6,24 +6,18 @@ services:
     container_name: analyst-service
     ports:
       - "8002:8002"
-    environment:
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_KEY}
     env_file:
       - .env
 
-  filter-service:
-    build:
-      context: ./filterService
-      dockerfile: Dockerfile
-    container_name: filter-service
-    ports:
-      - "8003:8003"
-    environment:
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_KEY}
-    env_file:
-      - .env
+  # filter-service:
+  #   build:
+  #     context: ./filterService
+  #     dockerfile: Dockerfile
+  #   container_name: filter-service
+  #   ports:
+  #     - "8003:8003"
+  #   env_file:
+  #     - .env
 
   upload-service:
     build:
@@ -32,8 +26,5 @@ services:
     container_name: upload-service
     ports:
       - "8004:8004"
-    environment:
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_KEY}
     env_file:
       - .env

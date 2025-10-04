@@ -1,0 +1,5 @@
+joblib
+logging
+numpy
+fastapi
+pydantic

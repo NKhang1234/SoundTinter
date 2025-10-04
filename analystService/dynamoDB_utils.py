@@ -2,6 +2,9 @@ import boto3
 from config import AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION, DYNAMODB_ENDPOINT_URL, DYNAMODB_TABLE_NAME, DYNAMODB_PARTITION_KEY, DYNAMODB_SORT_KEY
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
+import logging
+
+logger = logging.getLogger(__name__)
 
 class FeatureDynamo:
     def __init__(self):
@@ -25,7 +28,7 @@ class FeatureDynamo:
         try:
             table = self.__dynamodb.Table(self.__table_name)
             table.load()  # will throw if table doesn't exist
-            print(f"Table {self.__table_name} already exists")
+            logger.warning(f"Table {self.__table_name} already exists")
             return table
         except ClientError as err:
             try:
@@ -45,7 +48,7 @@ class FeatureDynamo:
                 return table
 
             except ClientError as err:
-                print(
+                logger.error(
                     f"Couldn't create table {self.__table_name}. "
                     f"Here's why: {err.response['Error']['Code']}: {err.response['Error']['Message']}"
                 )
@@ -55,7 +58,7 @@ class FeatureDynamo:
         try:
             return self.__table.put_item(Item=item)
         except ClientError as err:
-            print(
+            logger.error(
                     f"Couldn't add item {item} to table {self.__table_name}. "
                     f"Here's why: {err.response['Error']['Code']}: {err.response['Error']['Message']}"
                 )
@@ -68,7 +71,7 @@ class FeatureDynamo:
             )
             return res.get("Item", None)
         except ClientError as err:
-            print(
+            logger.error(
                     f"Couldn't get item {partition_key} - {sort_key} from table {self.__table_name}. " 
                     f"Here's why: {err.response['Error']['Code']}: {err.response['Error']['Message']}"
                 )
@@ -78,7 +81,7 @@ class FeatureDynamo:
         try:
             return self.__table.put_item(Item=item)
         except ClientError as err:
-            print(
+            logger.error(
                     f"Couldn't update item {item} to table {self.__table_name}. "
                     f"Here's why: {err.response['Error']['Code']}: {err.response['Error']['Message']}"
                 )
@@ -89,7 +92,7 @@ class FeatureDynamo:
             res = self.__table.query(KeyConditionExpression=Key(self.__partition_key).eq(partition_key))
             return res["Items"]
         except ClientError as err:
-            print(
+            logger.error(
                     f"Couldn't query item by {partition_key} on table {self.__table_name}. " 
                     f"Here's why: {err.response['Error']['Code']}: {err.response['Error']['Message']}"
                 )
@@ -101,7 +104,7 @@ class FeatureDynamo:
                 Key={self.__partition_key: partition_key, self.__sort_key: sort_key}
             )
         except ClientError as err:
-            print(
+            logger.error(
                 f"Couldn't delete item {partition_key}-{sort_key} from table {self.__table_name}. "
                 f"Here's why: {err.response['Error']['Code']}: {err.response['Error']['Message']}"
             )

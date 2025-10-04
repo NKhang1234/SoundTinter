@@ -1,6 +1,9 @@
 import boto3
 from config import S3_ENDPOINT_URL, S3_BUCKET_NAME, AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION
 import botocore.exceptions
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SongBucket:
     def __init__(self):
@@ -17,8 +20,8 @@ class SongBucket:
     def _create_bucket(self, bucketName: str):
         try:
             self.s3.head_bucket(Bucket=bucketName)
-            print(f'Bucket {self.bucketName} has already existed')
-        except ClientError as e:
+            logger.warning(f'Bucket {self.bucketName} has already existed')
+        except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == '404':
                 self.s3.create_bucket(
                     Bucket=self.bucketName,
@@ -26,7 +29,7 @@ class SongBucket:
                         'LocationConstraint': AWS_REGION
                     }
                 )
-                print(f'Bucket {self.bucketName} is created')
+                logger.info(f'Bucket {self.bucketName} is created')
             else:
                 raise
     
@@ -46,7 +49,7 @@ class SongBucket:
 
     def upload_song_to_s3(self, fileName: str, data: bytes, contentType: str = "audio/mpeg") -> None:
         if self.check_if_exist(fileName):
-            raise FileExistsError(f"{filename} already exists in bucket")
+            raise FileExistsError(f"{fileName} already exists in bucket")
         else:
             self.s3.put_object(
                 Bucket=self.bucketName,

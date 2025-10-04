@@ -5,12 +5,14 @@ services:
     ports:
       - "9000:9000"    # S3 API
       - "9001:9001"    # Web console
-    environment:
-      MINIO_ROOT_USER: ${AWS_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${AWS_SECRET_KEY}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_KEY}
+    env_file:
+      - .env
 
   dynamodb-local:
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
@@ -33,6 +35,21 @@ services:
     depends_on:
       - dynamodb-local
 
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"     # AMQP protocol
+      - "15672:15672"   # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    env_file:
+      - .env
+
+
   analyst-service:
     build:
       context: ./analystService
@@ -40,17 +57,24 @@ services:
     depends_on:
       - minio
       - dynamodb-local
+      - rabbitmq
     volumes:
       - ./analystService:/app
+    environment:
+      - APP_ENV=dev
+      - LOGGING_LEVEL=info
 
-  filter-service:
-    build:
-      context: ./filterService
-      dockerfile: Dockerfile.dev
-    depends_on:
-      - minio
-    volumes:
-      - ./filterService:/app
+  # filter-service:
+  #   build:
+  #     context: ./filterService
+  #     dockerfile: Dockerfile.dev
+  #   depends_on:
+  #     - minio
+  #   volumes:
+  #     - ./filterService:/app
+  #   environment:
+  #     - APP_ENV=dev
+  #     - LOGGING_LEVEL=info
 
   upload-service:
     build:
@@ -58,9 +82,14 @@ services:
       dockerfile: Dockerfile.dev
     depends_on:
       - minio
+      - rabbitmq
     volumes:
       - ./uploadService:/app
+    environment:
+      - APP_ENV=dev
+      - LOGGING_LEVEL=info
 
 volumes:
   minio_data:
   dynamodb_data:
+  rabbitmq_data:

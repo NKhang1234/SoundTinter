@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+boto3
+python-dotenv
+python-multipart
+aio_pika
+asyncio
+logging
+time

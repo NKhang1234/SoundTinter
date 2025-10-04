@@ -1,12 +1,12 @@
 from fastapi import FastAPI, Query, Response, HTTPException
 import numpy as np
 import cv2
-
 from s3_utils import ImageBucket
 from filters import FILTER_MAP
+from config import APP_ENV, LOGGING_LEVEL
+import logging
 
 app = FastAPI()
-imgBucket = ImageBucket()
 
 # Temporary hardcoded song-to-filter mapping
 SONG_FILTER_MAP = {
@@ -18,6 +18,39 @@ SONG_FILTER_MAP = {
     "song6": "cold"
 }
 
+@app.on_event("startup")
+async def startup_event():
+    ###################################################################
+    # Set up Logging
+    ###################################################################
+    level_map = {
+        "debug": logging.DEBUG,
+        "info": logging.INFO,
+        "warning": logging.WARNING,
+        "error": logging.ERROR,
+        "critical": logging.CRITICAL,
+    }
+
+    logLevel = level_map.get(LOGGING_LEVEL.lower(), logging.INFO)
+
+    logging.basicConfig(
+        level=logLevel,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    )
+
+    app.state.logger = logging.getLogger(__name__)
+
+    ###################################################################
+    # Set up Environment
+    ###################################################################
+
+    # Temporarily share same both in prod and dev mode -> Later separate type of tech based on env mode (S3/MinIO)
+    app.state.imgBucket = ImageBucket()
+    if APP_ENV == "prod":
+        app.state.logger.info("FilterService is in PRODUCTION mode")
+    elif APP_ENV == "dev":
+        app.state.logger.info("FilterService is in DEVELOPMENT mode")
+    
 @app.get("/test/apply_filter")
 def apply_filter(song_id: str = Query(...), image_id: str = Query(...)):
     # Get filter type from hardcoded map - Simluate call API from MappingService
@@ -28,7 +61,7 @@ def apply_filter(song_id: str = Query(...), image_id: str = Query(...)):
 
     # Download image from MinIO
     try:
-        image_bytes = imgBucket.download_image_from_s3(image_id)
+        image_bytes = app.state.imgBucket.download_image_from_s3(image_id)
         image_np = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Image not found in MinIO: {str(e)}")

@@ -1,8 +1,10 @@
 fastapi
 uvicorn
-pika          # RabbitMQ client
 requests      # API calls
 python-dotenv # Optional for env config
 python-multipart
 httpx
 boto3
+asyncio
+aio_pika
+logging
