@@ -7,4 +7,3 @@ httpx
 boto3
 asyncio
 aio_pika
-logging

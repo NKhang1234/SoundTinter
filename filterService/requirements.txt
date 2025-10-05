@@ -6,4 +6,4 @@ numpy
 requests
 python-dotenv
 scipy
-logging
+aio_pika

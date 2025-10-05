@@ -50,6 +50,10 @@ async def startup_event():
         # asyncio.create_task(consume_messages()) # Run a concurrent background loop to fetch message from RabbitMQ 
 
         app.state.logger.info("FilterService is in DEVELOPMENT mode")
+@app.on_event("shutdown")
+async def shutdown_event():
+    if APP_ENV == "dev":
+        await app.state.broker.close()
 
 ############################
 # HTTP API for test
@@ -64,11 +68,15 @@ async def request_filter(songName: str = Query(...), imageID: str = Query(...)):
         except Exception as e:
             app.state.logger.error(f"Failed to send mapping request to MappingService| song name: {songName}, user: {userID}")
 
+        timeout = 5
+        start = asyncio.get_event_loop().time()
         msg = None
         while True:
-            msg = await app.state.broker.get() # Return a dict
+            msg = await app.state.broker.get()
             if msg:
                 break
+            if asyncio.get_event_loop().time() - start > timeout:
+                raise TimeoutError("No message received from MappingService within timeout")
             await asyncio.sleep(0.01)
 
         res = await apply_filter(userID=msg["userID"], filterName=msg["filterName"], imageID=imageID)
@@ -77,8 +85,13 @@ async def request_filter(songName: str = Query(...), imageID: str = Query(...)):
     except Exception as e:
         app.state.logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    
 
+@app.post("/test/filter")
+async def test_filter(filterName: str = Query(...), imageID: str = Query(...)):   
+    # Temporaly hardcode userID = "user1"
+    userID = "user1" 
+    res = await apply_filter(userID=userID, filterName=filterName, imageID=imageID)
+    return res
 ############################
 # Main Service
 ############################
@@ -92,7 +105,7 @@ async def consume_messages():
 async def apply_filter(userID: str, filterName: str, imageID: str):
     if filterName not in FILTER_MAP:
         app.state.logger.error(f"Unknown filter: {filterName}")
-        raise
+        raise ValueError(f"Unknown filter: {filterName}")
 
     # Download image from MinIO
     try:

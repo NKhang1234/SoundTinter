@@ -1,7 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from mappingEngine import MappingEngine
-from config import MODEL_PATH
+from dynamoDB_utils import FeatureDynamo
+from config import MODEL_PATH, LOGGING_LEVEL, APP_ENV
+from rabbitmq import RabbitMQ
+import asyncio
+import logging
 
 app = FastAPI()
 
@@ -76,29 +80,29 @@ async def consume_messages():
     while True:
         msg = await app.state.broker.get() # Return a dict
         if msg:
-            app.state.logger.info(f"MappingService")
-            await analyze_song(msg["userID"], msg["songName"])
+            await map_filter(msg["userID"], msg["songName"])
         await asyncio.sleep(0.01)
 
 async def map_filter(userID: str, songName: str) -> dict:
     try:
         features = app.state.featDyna.get_item(partition_key=userID, sort_key=songName)
+        app.state.logger.debug(f"Features song: {features}")
     except Exception as e:
         app.state.logger.error(f"Failed to get song features from DynamoDB: {userID} - {songName}")
 
     try:
         filter_name = app.state.mapEngine.predict_filter({
-            "rhythm.bpm": features.rhythm_bpm,
-            "rhythm.danceability": features.rhythm_danceability,
-            "lowlevel.average_loudness": features.lowlevel_average_loudness,
-            "tonal.chords_key": features.tonal_chords_key,
-            "tonal.chords_scale": features.tonal_chords_scale,
+            "rhythm.danceability": features["rhythm.danceability"],
+            "rhythm.bpm": features["rhythm.bpm"],
+            "lowlevel.average_loudness": features["lowlevel.average_loudness"],
+            "tonal.chords_key": features["tonal.chords_key"],
+            "tonal.chords_scale": features["tonal.chords_scale"]
         })
     except Exception as e:
         app.state.logger.error(f"Failed map song to filter in mapping engine: {userID} - {songName}")
         raise
     
-    await app.state.broker.send(self, userID=userID, filterName=filter_name, status="Successfully")
+    await app.state.broker.send(userID=userID, filterName=filter_name, status="Successfully")
 
     # Testing usage
     return filter_name

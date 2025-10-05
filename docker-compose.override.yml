@@ -64,17 +64,17 @@ services:
       - APP_ENV=dev
       - LOGGING_LEVEL=info
 
-  # filter-service:
-  #   build:
-  #     context: ./filterService
-  #     dockerfile: Dockerfile.dev
-  #   depends_on:
-  #     - minio
-  #   volumes:
-  #     - ./filterService:/app
-  #   environment:
-  #     - APP_ENV=dev
-  #     - LOGGING_LEVEL=info
+  filter-service:
+    build:
+      context: ./filterService
+      dockerfile: Dockerfile.dev
+    depends_on:
+      - minio
+    volumes:
+      - ./filterService:/app
+    environment:
+      - APP_ENV=dev
+      - LOGGING_LEVEL=info
 
   upload-service:
     build:

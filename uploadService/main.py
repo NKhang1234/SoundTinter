@@ -69,7 +69,7 @@ async def shutdown_event():
 async def upload_image(file: UploadFile = File(...)):
     try:
         try:
-            image_data = file.read()
+            image_data = await file.read()
         except Exception as e:
             raise FileReadError("Failed to read image") from e
         
@@ -104,12 +104,11 @@ async def consume_messages():
     while True:
         msg = await app.state.broker.get() # Return a dict
         if msg:
-            app.state.logger.info(f"AnalystService received status of {msg['fileName']} from user {msg['userID']}")
-            yield f"data: {msg}\n\n"
+            app.state.logger.info(f"UploadService received status of {msg['fileName']} from user {msg['userID']}")
         await asyncio.sleep(0.01)
 
-@app.get("/sse")
-async def sse_endpoint(userID: str):
-    return StreamingResponse(consume_messages(), media_type="text/event-stream")
+# @app.get("/sse")
+# async def sse_endpoint(userID: str):
+#     return StreamingResponse(consume_messages(), media_type="text/event-stream")
 
 # Implement SSE connection to push noti back to correct user when receive noti from rabbitMQ

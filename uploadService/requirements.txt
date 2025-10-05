@@ -5,5 +5,3 @@ python-dotenv
 python-multipart
 aio_pika
 asyncio
-logging
-time

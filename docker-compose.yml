@@ -9,15 +9,15 @@ services:
     env_file:
       - .env
 
-  # filter-service:
-  #   build:
-  #     context: ./filterService
-  #     dockerfile: Dockerfile
-  #   container_name: filter-service
-  #   ports:
-  #     - "8003:8003"
-  #   env_file:
-  #     - .env
+  filter-service:
+    build:
+      context: ./filterService
+      dockerfile: Dockerfile
+    container_name: filter-service
+    ports:
+      - "8003:8003"
+    env_file:
+      - .env
 
   upload-service:
     build:
