@@ -1,5 +1,13 @@
-joblib
-logging
-numpy
 fastapi
+uvicorn
+requests      # API calls
+python-dotenv # Optional for env config
+python-multipart
+httpx
+boto3
+asyncio
+aio_pika
+logging
+joblib
+numpy
 pydantic

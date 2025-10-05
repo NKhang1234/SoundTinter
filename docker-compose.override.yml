@@ -89,6 +89,19 @@ services:
       - APP_ENV=dev
       - LOGGING_LEVEL=info
 
+  mapping-service:
+    build:
+      context: ./mappingService
+      dockerfile: Dockerfile.dev
+    depends_on:
+      - dynamodb-local
+      - rabbitmq
+    volumes:
+      - ./mappingService:/app
+    environment:
+      - APP_ENV=dev
+      - LOGGING_LEVEL=info
+
 volumes:
   minio_data:
   dynamodb_data:

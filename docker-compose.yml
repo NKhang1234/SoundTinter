@@ -28,3 +28,13 @@ services:
       - "8004:8004"
     env_file:
       - .env
+
+  mapping-service:
+    build:
+      context: ./mappingService
+      dockerfile: Dockerfile
+    container_name: mapping-service
+    ports:
+      - "8005:8005"
+    env_file:
+      - .env

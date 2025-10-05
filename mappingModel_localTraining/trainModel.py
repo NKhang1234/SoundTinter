@@ -26,7 +26,7 @@ logging.basicConfig(
 
 log = logging.getLogger(__name__)
 
-def trainDecisionTree(dataset_path: str, model_path: str):
+def trainDecisionTree(dataset_path: str):
     # Load dataset from CSV
     try:
         df = pd.read_csv(dataset_path)
@@ -54,6 +54,8 @@ def trainDecisionTree(dataset_path: str, model_path: str):
     clf = DecisionTreeClassifier(max_depth=4, random_state=42)
     clf.fit(X, y)
 
+    model_path = 'models/decisionTree.pkl'
+
     joblib.dump({
         "model": clf,
         "key_enc": key_enc,
@@ -64,14 +66,14 @@ def trainDecisionTree(dataset_path: str, model_path: str):
     log.info(f"✅ Model saved to {model_path}")
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Usage: trainModel.py [model name] [dataset path (.csv)] [model path (.pkl)]")
+    if len(sys.argv) != 3:
+        print("Usage: trainModel.py [model name] [dataset path (.csv)]")
         print("""Model list (Model - Model name):""")
         print("""- Decision Tree: DecisionTree""")
         sys.exit(1)
     
     if sys.argv[1] == "DecisionTree":
-        trainDecisionTree(dataset_path=sys.argv[2], model_path=sys.argv[3])
+        trainDecisionTree(dataset_path=sys.argv[2])
     else:
         print(f"❌ Unknown model: {model_name}")
         print("Available models: DecisionTree")

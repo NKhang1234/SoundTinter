@@ -81,7 +81,7 @@ async def analyze_song(file: UploadFile = File(...)):
             "fileName": file.filename,
             "contentType": file.content_type
         }
-        features = analyze_song(msg)
+        features = await analyze_song(msg)
 
         return features
 
@@ -122,7 +122,8 @@ async def analyze_song(msg: dict) -> dict:
     else:
         await app.state.broker.send(msg['userID'], msg['fileName'], status='Finish')
 
-    # return features
+    # Testing Usage
+    return features
 
 @app.get("/")
 def root():

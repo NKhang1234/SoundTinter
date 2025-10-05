@@ -34,5 +34,5 @@ deactivate
 pip install -r requirements.txt
 
 ### 3. Train Model
-python3 trainModel.py [model name] [dataset(.csv)] [model path]
-python3 trainModel.py DecisionTree dataset.csv model.pkl
+python3 trainModel.py [model name] [dataset(.csv)]
+python3 trainModel.py DecisionTree dataset.csv

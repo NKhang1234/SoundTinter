@@ -5,19 +5,14 @@ from s3_utils import ImageBucket
 from filters import FILTER_MAP
 from config import APP_ENV, LOGGING_LEVEL
 import logging
+import asyncio
+from rabbitmq import RabbitMQ
+from msgBroker_Interface import MessageBroker
 
 app = FastAPI()
-
-# Temporary hardcoded song-to-filter mapping
-SONG_FILTER_MAP = {
-    "song1": "sepia",
-    "song2": "grayscale",
-    "song3": "blur",
-    "song4": "gotham",
-    "song5": "warm",
-    "song6": "cold"
-}
-
+############################
+# Start_up & Shut_down event
+############################
 @app.on_event("startup")
 async def startup_event():
     ###################################################################
@@ -49,29 +44,72 @@ async def startup_event():
     if APP_ENV == "prod":
         app.state.logger.info("FilterService is in PRODUCTION mode")
     elif APP_ENV == "dev":
-        app.state.logger.info("FilterService is in DEVELOPMENT mode")
-    
-@app.get("/test/apply_filter")
-def apply_filter(song_id: str = Query(...), image_id: str = Query(...)):
-    # Get filter type from hardcoded map - Simluate call API from MappingService
-    filter_type = SONG_FILTER_MAP.get(song_id, "sepia")  # default to sepia
+        # Initiate RabbitMQ
+        app.state.broker: MessageBroker = RabbitMQ("FilterService")
+        await app.state.broker.connect() # Asynchronous connect app to RabbitMQ server
+        # asyncio.create_task(consume_messages()) # Run a concurrent background loop to fetch message from RabbitMQ 
 
-    if filter_type not in FILTER_MAP:
-        raise HTTPException(status_code=400, detail=f"Unknown filter: {filter_type}")
+        app.state.logger.info("FilterService is in DEVELOPMENT mode")
+
+############################
+# HTTP API for test
+############################  
+@app.post("/test/request_filter")
+async def request_filter(songName: str = Query(...), imageID: str = Query(...)):
+    try: 
+        try:
+            # Temporaly hardcode userID = "user1"
+            userID = "user1"
+            await app.state.broker.send(userID=userID, songName=songName)
+        except Exception as e:
+            app.state.logger.error(f"Failed to send mapping request to MappingService| song name: {songName}, user: {userID}")
+
+        msg = None
+        while True:
+            msg = await app.state.broker.get() # Return a dict
+            if msg:
+                break
+            await asyncio.sleep(0.01)
+
+        res = await apply_filter(userID=msg["userID"], filterName=msg["filterName"], imageID=imageID)
+
+        return res
+    except Exception as e:
+        app.state.logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+############################
+# Main Service
+############################
+async def consume_messages():
+    while True:
+        msg = await app.state.broker.get() # Return a dict
+        if msg:
+            await apply_filter(msg["userID"], msg["filterName"])
+        await asyncio.sleep(0.01)
+
+async def apply_filter(userID: str, filterName: str, imageID: str):
+    if filterName not in FILTER_MAP:
+        app.state.logger.error(f"Unknown filter: {filterName}")
+        raise
 
     # Download image from MinIO
     try:
-        image_bytes = app.state.imgBucket.download_image_from_s3(image_id)
+        image_bytes = app.state.imgBucket.download_image_from_s3(imageID)
         image_np = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"Image not found in MinIO: {str(e)}")
+        app.state.logger.error(f"Image not found in MinIO: {imageID}")
+        raise
 
     # Apply the filter
-    filtered = FILTER_MAP[filter_type](image_np)
+    filtered = FILTER_MAP[filterName](image_np)
 
     # Encode image to JPEG
     success, buffer = cv2.imencode(".jpg", filtered)
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to encode image")
+        app.state.logger.error(f"Failed to encode image: {imageID}")
+        raise
 
     return Response(content=buffer.tobytes(), media_type="image/jpeg")
+
