@@ -4,18 +4,13 @@ services:
       context: ./analystService
       dockerfile: Dockerfile
     container_name: analyst-service
-    ports:
-      - "8002:8002"
     env_file:
       - .env
-
   filter-service:
     build:
       context: ./filterService
       dockerfile: Dockerfile
     container_name: filter-service
-    ports:
-      - "8003:8003"
     env_file:
       - .env
 
@@ -24,8 +19,6 @@ services:
       context: ./uploadService
       dockerfile: Dockerfile
     container_name: upload-service
-    ports:
-      - "8004:8004"
     env_file:
       - .env
 
@@ -34,7 +27,5 @@ services:
       context: ./mappingService
       dockerfile: Dockerfile
     container_name: mapping-service
-    ports:
-      - "8005:8005"
     env_file:
       - .env

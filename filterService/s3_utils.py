@@ -1,4 +1,5 @@
 import boto3
+from botocore.exceptions import ClientError
 from config import S3_ENDPOINT_URL, S3_BUCKET_NAME, AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION
 import logging
 
