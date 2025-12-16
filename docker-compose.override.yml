@@ -111,6 +111,8 @@ services:
       - "traefik.http.middlewares.dashboard-auth.basicauth.users=nkHang1303:$$apr1$$jOl9Qcbx$$6I76/w.o3n81DLARXtneg0"
       - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
 
+
+
   analyst-service:
     build:
       context: ./analystService
