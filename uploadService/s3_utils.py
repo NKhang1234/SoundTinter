@@ -35,9 +35,9 @@ class ImageBucket:
             else:
                 raise
                 
-    def check_if_exist(self, fileName: str):
+    def check_if_exist(self, key: str):
         try:
-            self.s3.head_object(Bucket=self.bucketName, Key=fileName)
+            self.s3.head_object(Bucket=self.bucketName, Key=key)
             return True
         except ClientError as e:
             if e.response['Error']['Code'] == '404':
@@ -45,13 +45,13 @@ class ImageBucket:
             else:
                 raise
 
-    def upload_image_to_s3(self, fileName: str, data: bytes, contentType: str = "image/png"):
-        if self.check_if_exist(fileName):
-            raise FileExistsError(f"{fileName} already exists in bucket")
+    def upload_image_to_s3(self, key: str, data: bytes, contentType: str = "image/png"):
+        if self.check_if_exist(key):
+            raise FileExistsError(f"{key} already exists in bucket")
         else:
             self.s3.put_object(
                 Bucket=self.bucketName,
-                Key=fileName,
+                Key=key,
                 Body=data,
                 ContentType=contentType
             )

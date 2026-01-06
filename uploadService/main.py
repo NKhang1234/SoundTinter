@@ -66,7 +66,11 @@ async def shutdown_event():
 # Main Service
 ############################
 @app.post("/upload-image")
-async def upload_image(file: UploadFile = File(...)):
+async def upload_image(
+    file: UploadFile = File(...),
+    x_user_id: str = Header(...),
+    x_user_roles: str | None = Header(None),
+):
     try:
         try:
             image_data = await file.read()
@@ -74,14 +78,18 @@ async def upload_image(file: UploadFile = File(...)):
             raise FileReadError("Failed to read image") from e
         
         # Store to s3
-        app.state.imgBucket.upload_image_to_s3(fileName=file.filename, data=image_data, contentType=file.content_type)
+        image_key = f"users/{x_user_id}/images/{image_id}_{file.filename}"
+        app.state.imgBucket.upload_image_to_s3(key=image_key, data=image_data, contentType=file.content_type)
 
     except Exception as e:
         app.state.logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload-song")
-async def upload_song(file: UploadFile = File(...)):
+async def upload_song(
+    file: UploadFile = File(...),
+    x_user_id: str = Header(...),
+):
     try: 
         try:
             song_data = await file.read()
@@ -90,8 +98,7 @@ async def upload_song(file: UploadFile = File(...)):
             raise FileReadError("Failed to read song") from e
 
             # Push to RabbitMQ
-            # Temporaly hardcode "user1"
-        await app.state.broker.send(userID='user1', audio_data=song_data, fileName=file.filename, contentType=file.content_type)
+        await app.state.broker.send(userID=x_user_id, audio_data=song_data, fileName=file.filename, contentType=file.content_type)
     except Exception as e:
         app.state.logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

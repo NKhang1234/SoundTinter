@@ -61,6 +61,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     env_file:
       - .env
 
@@ -76,9 +81,20 @@ services:
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
       KEYCLOAK_ADMIN : ${KEYCLOAK_USER}
       KEYCLOAK_ADMIN_PASSWORD : ${KEYCLOAK_PASSWORD}
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     env_file:
       - .env
     labels:
@@ -111,7 +127,34 @@ services:
       - "traefik.http.middlewares.dashboard-auth.basicauth.users=nkHang1303:$$apr1$$jOl9Qcbx$$6I76/w.o3n81DLARXtneg0"
       - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  web-bff:
+    build:
+      context: ./bffWeb
+      dockerfile: Dockerfile.dev
+    container_name: web-bff
+    depends_on:
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web-bff.rule=Host(`web.localhost`)"
+      - "traefik.http.routers.web-bff.entrypoints=web"
+      - "traefik.http.services.web-bff.loadbalancer.server.port=${PORT_WEB_BFF}"
 
   analyst-service:
     build:
@@ -188,6 +231,7 @@ services:
 
 volumes:
   minio_data:
+  redis-data:
   dynamodb_data:
   rabbitmq_data:
   postgres_data:

@@ -1,10 +1,23 @@
+// src/app.module.ts
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module';
+import { AggregationModule } from './aggregation/upload/upload.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    // Configuration
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+    }),
+    // Application Modules
+    RedisModule,
+    AuthModule,
+    AggregationModule,
+  ],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}

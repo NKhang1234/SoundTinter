@@ -79,7 +79,9 @@ async def request_filter(songName: str = Query(...), imageID: str = Query(...)):
                 raise TimeoutError("No message received from MappingService within timeout")
             await asyncio.sleep(0.01)
 
-        res = await apply_filter(userID=msg["userID"], filterName=msg["filterName"], imageID=imageID)
+        res = await apply_filter(filterName=msg["filterName"], imageID=imageID)
+        # Let Store the filtered image back to MinIO for user to call get api later (TODO)
+        # Not return the image directly via HTTP response of post api due to long latency
 
         return res
     except Exception as e:
@@ -88,9 +90,7 @@ async def request_filter(songName: str = Query(...), imageID: str = Query(...)):
 
 @app.post("/test/filter")
 async def test_filter(filterName: str = Query(...), imageID: str = Query(...)):   
-    # Temporaly hardcode userID = "user1"
-    userID = "user1" 
-    res = await apply_filter(userID=userID, filterName=filterName, imageID=imageID)
+    res = await apply_filter(filterName=filterName, imageID=imageID)
     return res
 ############################
 # Main Service
@@ -102,7 +102,7 @@ async def consume_messages():
             await apply_filter(msg["userID"], msg["filterName"])
         await asyncio.sleep(0.01)
 
-async def apply_filter(userID: str, filterName: str, imageID: str):
+async def apply_filter(filterName: str, imageID: str):
     if filterName not in FILTER_MAP:
         app.state.logger.error(f"Unknown filter: {filterName}")
         raise ValueError(f"Unknown filter: {filterName}")
