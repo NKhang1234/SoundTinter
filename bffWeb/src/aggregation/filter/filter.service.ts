@@ -10,11 +10,11 @@ export class FilterService {
 
   async requestFilter(
     songName: string,
-    imageID: string,
+    imageName: string,
     sessionData: SessionData,
   ) {
-    if (!songName || !imageID) {
-      throw new BadRequestException('songName and imageID are required');
+    if (!songName || !imageName) {
+      throw new BadRequestException('songName and imageName are required');
     }
 
     const filterServiceUrl =
@@ -27,7 +27,7 @@ export class FilterService {
         {
           params: {
             songName,
-            imageID,
+            imageName,
           },
           headers: {
             'X-User-Id': sessionData.userId,
@@ -40,27 +40,33 @@ export class FilterService {
     return response.data;
   }
 
-  async applyFilter(songName: string, imageID: string) {
-    if (!songName || !imageID) {
-      throw new BadRequestException('songName and imageID are required');
+  async getResult(
+    songName: string, 
+    imageName: string,
+    sessionData: SessionData,
+  ) {
+    if (!songName || !imageName) {
+      throw new BadRequestException('songName and imageName are required');
     }
 
     const filterServiceUrl =
-      process.env.FILTER_SERVICE_URL + '/apply_filter';
+      process.env.FILTER_SERVICE_URL + '/get_result';
 
     const response = await firstValueFrom(
-      this.httpService.post(
+      this.httpService.get(
         filterServiceUrl,
-        null, // no body, only query params
         {
           params: {
             songName,
-            imageID,
+            imageName,
+          },
+          headers: {
+            'X-User-Id': sessionData.userId,
           },
           timeout: 10_000, // filter can take time
         },
       ),
     );
     return response.data;
-}
+  }
 }

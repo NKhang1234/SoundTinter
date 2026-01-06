@@ -14,7 +14,8 @@ AWS_REGION = os.getenv("AWS_REGION", "defaultValue")
 
 # S3 Bucket (MinIO for dev)
 S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL", "defaultValue")
-S3_BUCKET_NAME = "images"
+S3_ORIGINAL_BUCKET = "original_images"
+S3_RESULT_BUCKET = "result_images"
 
 # RabbitMQ (dev)
 RBMQ_USER = os.getenv("RABBITMQ_DEFAULT_USER")

@@ -1,12 +1,12 @@
 import boto3
 from botocore.exceptions import ClientError
-from config import S3_ENDPOINT_URL, S3_BUCKET_NAME, AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION
+from config import S3_ENDPOINT_URL, AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION
 import logging
 
 logger = logging.getLogger(__name__)
 
 class ImageBucket:
-    def __init__(self):
+    def __init__(self, bucketName):
         self.s3 = boto3.client(
             "s3",
             endpoint_url=S3_ENDPOINT_URL,
@@ -14,7 +14,7 @@ class ImageBucket:
             aws_secret_access_key=AWS_SECRET_KEY,
             region_name=AWS_REGION,
         )
-        self.bucketName = S3_BUCKET_NAME
+        self.bucketName = bucketName
         self._create_bucket(self.bucketName)
 
     def _create_bucket(self, bucketName: str):
@@ -36,4 +36,11 @@ class ImageBucket:
     def download_image_from_s3(self, image_id: str) -> bytes:
         response = self.s3.get_object(Bucket=self.bucketName, Key=image_id)
         return response["Body"].read()
+
+    def upload_image_to_s3(self, image_id: str, image_bytes: bytes):
+        self.s3.put_object(Bucket=self.bucketName, Key=image_id, Body=image_bytes)
+        logger.info(f'Image {image_id} uploaded to bucket {self.bucketName}')
+
+
+   
 

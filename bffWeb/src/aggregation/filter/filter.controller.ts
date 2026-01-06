@@ -12,38 +12,40 @@ export class FilterController {
   constructor(private readonly filterService: FilterService) {}
 
   /**
-   * POST /filters/test/request
+   * POST /filters/request_filter
    */
-  @Post('test/request')
-  @Roles('Admin')
+  @Post('request_filter')
+  @Roles('Admin', 'User')
   @UseGuards(SessionGuard, RolesGuard)
   @HttpCode(HttpStatus.OK)
   async requestFilter(
     @Query('songName') songName: string,
-    @Query('imageID') imageID: string,
+    @Query('imageName') imageName: string,
     @SessionDataDecorator() sessionData: SessionData,
   ) {
     return this.filterService.requestFilter(
       songName,
-      imageID,
+      imageName,
       sessionData,
     );
   }
 
   /**
-   * POST /filters/test/apply
+   * POST /filters/result
    */
-  @Post('test/apply')
-  @Roles('Admin')
+  @Post('result')
+  @Roles('Admin', 'User')
   @UseGuards(SessionGuard, RolesGuard)
   @HttpCode(HttpStatus.OK)
   async applyFilter(
     @Query('songName') songName: string,
-    @Query('imageID') imageID: string,
+    @Query('imageName') imageName: string,
+    @SessionDataDecorator() sessionData: SessionData,
   ) {
-    return this.filterService.applyFilter(
+    return this.filterService.getResult(
       songName,
-      imageID,
+      imageName,
+      sessionData,
     );
   }
 }

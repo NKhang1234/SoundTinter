@@ -8,6 +8,7 @@ import logging
 import asyncio
 from rabbitmq import RabbitMQ
 from msgBroker_Interface import MessageBroker
+from config import S3_ORIGINAL_BUCKET, S3_RESULT_BUCKET
 
 app = FastAPI()
 ############################
@@ -40,14 +41,15 @@ async def startup_event():
     ###################################################################
 
     # Temporarily share same both in prod and dev mode -> Later separate type of tech based on env mode (S3/MinIO)
-    app.state.imgBucket = ImageBucket()
+    app.state.imgBucket = ImageBucket(S3_ORIGINAL_BUCKET)
+    app.state.resultImgBucket = ImageBucket(S3_RESULT_BUCKET)
     if APP_ENV == "prod":
         app.state.logger.info("FilterService is in PRODUCTION mode")
     elif APP_ENV == "dev":
         # Initiate RabbitMQ
         app.state.broker: MessageBroker = RabbitMQ("FilterService")
         await app.state.broker.connect() # Asynchronous connect app to RabbitMQ server
-        # asyncio.create_task(consume_messages()) # Run a concurrent background loop to fetch message from RabbitMQ 
+        asyncio.create_task(consume_messages()) # Run a concurrent background loop to fetch message from RabbitMQ 
 
         app.state.logger.info("FilterService is in DEVELOPMENT mode")
 @app.on_event("shutdown")
@@ -56,41 +58,50 @@ async def shutdown_event():
         await app.state.broker.close()
 
 ############################
-# HTTP API for test
+# HTTP API
 ############################  
-@app.post("/test/request_filter")
-async def request_filter(songName: str = Query(...), imageID: str = Query(...)):
-    try: 
-        try:
-            # Temporaly hardcode userID = "user1"
-            userID = "user1"
-            await app.state.broker.send(userID=userID, songName=songName)
-        except Exception as e:
-            app.state.logger.error(f"Failed to send mapping request to MappingService| song name: {songName}, user: {userID}")
-
-        timeout = 5
-        start = asyncio.get_event_loop().time()
-        msg = None
-        while True:
-            msg = await app.state.broker.get()
-            if msg:
-                break
-            if asyncio.get_event_loop().time() - start > timeout:
-                raise TimeoutError("No message received from MappingService within timeout")
-            await asyncio.sleep(0.01)
-
-        res = await apply_filter(filterName=msg["filterName"], imageID=imageID)
-        # Let Store the filtered image back to MinIO for user to call get api later (TODO)
-        # Not return the image directly via HTTP response of post api due to long latency
-
-        return res
+@app.post("/request_filter")
+async def request_filter(
+    songName: str = Query(...), 
+    imageName: str = Query(...),
+    x_user_id: str = Header(...),
+):
+    try:
+        image_key = f"users/{x_user_id}/images/{imageName}"
+        await app.state.broker.send(userID=x_user_id, songName=songName, imageID=image_key)
     except Exception as e:
-        app.state.logger.error(f"Unexpected error: {e}")
+        app.state.logger.error(f"Failed to send mapping request to MappingService| song name: {songName}, user: {x_user_id}")
         raise HTTPException(status_code=500, detail=str(e))
+ 
+    return {"message": "Filter request sent successfully"}
 
+@app.get("/get_result")
+async def get_result(
+    songName: str = Query(...), 
+    imageName: str = Query(...),
+    x_user_id: str = Header(...),
+):   
+    res_key = f"users/{x_user_id}/images/{imageName}/songs/{songName}"
+    try:
+        res_image = app.state.resultImgBucket.download_image_from_s3(image_id=res_key)
+    except Exception as e:
+        app.state.logger.error(f"Filtered image not found in S3 | userID: {x_user_id}, songName: {songName}, imageName: {imageName}")
+        raise HTTPException(status_code=404, detail="Filtered image not found")
+
+    return Response(content=res_image, media_type="image/jpeg")
+
+
+############################
+# HTTP API for test
+############################
 @app.post("/test/filter")
-async def test_filter(filterName: str = Query(...), imageID: str = Query(...)):   
-    res = await apply_filter(filterName=filterName, imageID=imageID)
+async def test_filter(
+    filterName: str = Query(...), 
+    imageName: str = Query(...),
+    x_user_id: str = Header(...),
+):   
+    image_key = f"users/{x_user_id}/images/{imageName}"
+    res = await apply_filter(filterName=filterName, imageID=image_key)
     return res
 ############################
 # Main Service
@@ -99,7 +110,16 @@ async def consume_messages():
     while True:
         msg = await app.state.broker.get() # Return a dict
         if msg:
-            await apply_filter(msg["userID"], msg["filterName"])
+            userID = msg["userID"]
+            filterName = msg["filterName"]
+            imageID = msg["imageID"]
+            songName = msg["songName"]
+            app.state.logger.debug(f"Received message from RabbitMQ | userID: {userID}, filter: {filterName}, imageID: {imageID}, songName: {songName}")
+            
+            res_image = await apply_filter(filterName, imageID)
+            res_key = f"{imageID}/songs/{songName}"
+            app.state.resultImgBucket.upload_image_to_s3(image_id=res_key, image_bytes=res_image.body)
+            app.state.logger.info(f"Filtered image uploaded to S3 | userID: {userID}, filter: {filterName}, imageID: {imageID}, songName: {songName}")
         await asyncio.sleep(0.01)
 
 async def apply_filter(filterName: str, imageID: str):
@@ -124,5 +144,5 @@ async def apply_filter(filterName: str, imageID: str):
         app.state.logger.error(f"Failed to encode image: {imageID}")
         raise
 
-    return Response(content=buffer.tobytes(), media_type="image/jpeg")
+    return buffer.tobytes()
 

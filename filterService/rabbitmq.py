@@ -41,13 +41,14 @@ class RabbitMQ(MessageBroker):
         # Start consuming
         await queue.consume(self._callback)
 
-    async def send(self, userID: str, songName: str):
+    async def send(self, userID: str, songName: str, imageID: str):
         await self.bwdChannel.default_exchange.publish(
             message = aio_pika.Message(
                 body=b"",
                 headers={
                     "userID": userID,
-                    "songName": songName
+                    "songName": songName,
+                    "imageID": imageID
                 }
             ),
             routing_key=RBMQ_FWD_QUEUE
@@ -59,7 +60,8 @@ class RabbitMQ(MessageBroker):
             await self.receiveBuffer.put({
                 "userID": message.headers.get("userID"),
                 "filterName": message.headers.get("filterName"),
-                "status": message.headers.get("status")
+                "imageID": message.headers.get("imageID"),
+                "songName": message.headers.get("songName")
             })
             logger.info(f"{self.serverName} received {message.headers.get('filterName')} of user {message.headers.get('userID')}")
 

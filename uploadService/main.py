@@ -78,7 +78,7 @@ async def upload_image(
             raise FileReadError("Failed to read image") from e
         
         # Store to s3
-        image_key = f"users/{x_user_id}/images/{image_id}_{file.filename}"
+        image_key = f"users/{x_user_id}/images/{file.filename}"
         app.state.imgBucket.upload_image_to_s3(key=image_key, data=image_data, contentType=file.content_type)
 
     except Exception as e:

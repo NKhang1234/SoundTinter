@@ -80,10 +80,14 @@ async def consume_messages():
     while True:
         msg = await app.state.broker.get() # Return a dict
         if msg:
-            await map_filter(msg["userID"], msg["songName"])
+            userID = msg["userID"]
+            songName = msg["songName"]
+            imageID = msg["imageID"]
+            res_filter = await map_filter(userID=userID, songName=songName)
+            await app.state.broker.send(userID=userID, filterName=res_filter, imageID=imageID, songName=songName)
         await asyncio.sleep(0.01)
 
-async def map_filter(userID: str, songName: str) -> dict:
+async def map_filter(userID: str, songName: str) -> str:
     try:
         features = app.state.featDyna.get_item(partition_key=userID, sort_key=songName)
         app.state.logger.debug(f"Features song: {features}")
@@ -101,10 +105,7 @@ async def map_filter(userID: str, songName: str) -> dict:
     except Exception as e:
         app.state.logger.error(f"Failed map song to filter in mapping engine: {userID} - {songName}")
         raise
-    
-    await app.state.broker.send(userID=userID, filterName=filter_name, status="Successfully")
 
-    # Testing usage
     return filter_name
 
 @app.get("/")

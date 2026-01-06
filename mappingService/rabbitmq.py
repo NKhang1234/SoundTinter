@@ -41,14 +41,15 @@ class RabbitMQ(MessageBroker):
         # Start consuming
         await queue.consume(self._callback)
 
-    async def send(self, userID: str, filterName: str, status: str):
+    async def send(self, userID: str, filterName: str, imageID: str, songName: str):
         await self.bwdChannel.default_exchange.publish(
             message = aio_pika.Message(
                 body=b"",
                 headers={
                     "userID": userID,
                     "filterName": filterName,
-                    "status": status
+                    "imageID": imageID,
+                    "songName": songName
                 }
             ),
             routing_key=RBMQ_BWD_QUEUE
@@ -59,9 +60,10 @@ class RabbitMQ(MessageBroker):
         async with message.process():
             await self.receiveBuffer.put({
                 "userID": message.headers.get("userID"),
-                "songName": message.headers.get("songName")
+                "songName": message.headers.get("songName"),
+                "imageID": message.headers.get("imageID")
             })
-            logger.info(f"{self.serverName} received {message.headers.get('songName')} from user {message.headers.get('userID')}")
+            logger.info(f"{self.serverName} received | user: {message.headers.get('userID')}, song: {message.headers.get('songName')}, image: {message.headers.get('imageID')}")
 
     async def get(self) -> dict:
         timeout = self.getTimeOut
