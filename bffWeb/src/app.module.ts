@@ -2,7 +2,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
-import { AggregationModule } from './aggregation/upload/upload.module';
+import { AggregationModule } from './aggregation/aggregation.module';
 import { RedisModule } from './redis/redis.module';
 
 @Module({

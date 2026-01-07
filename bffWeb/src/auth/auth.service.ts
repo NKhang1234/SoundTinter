@@ -29,7 +29,7 @@ export class AuthService {
     this.keycloakUrl = this.configService.get('KEYCLOAK_URL', 'http://keycloak:8080');
     this.realm = this.configService.get('KEYCLOAK_REALM', 'master');
     this.clientId = this.configService.get('KEYCLOAK_CLIENT_ID', 'web-bff');
-    this.clientSecret = this.configService.get('KEYCLOAK_CLIENT_SECRET');
+    this.clientSecret = this.configService.get('KEYCLOAK_CLIENT_SECRET', '');
 
     if (!this.clientSecret) {
       this.logger.warn('KEYCLOAK_CLIENT_SECRET is not set!');
@@ -86,7 +86,7 @@ export class AuthService {
         client_id: this.clientId,
         client_secret: this.clientSecret,
         code,
-        redirect_uri: this.configService.get('WEB_CALLBACK_URL', 'http://localhost:3000/auth/callback'),
+        redirect_uri: this.configService.get('WEB_CALLBACK_URL', 'http://web.localhost/auth/callback'),
       });
 
       this.logger.log(`Attempting login with authorization code: ${code}`);

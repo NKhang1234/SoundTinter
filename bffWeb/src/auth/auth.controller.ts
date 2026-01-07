@@ -55,7 +55,7 @@ export class AuthController {
       `?client_id=${this.clientId}` +
       `&response_type=code` +
       `&scope=openid profile email` +
-      `&redirect_uri=${this.configService.get('WEB_CALLBACK_URL', 'http://localhost:3000/auth/callback')}`;
+      `&redirect_uri=${this.configService.get('WEB_CALLBACK_URL', 'http://web.localhost/auth/callback')}`;
 
     return res.redirect(authUrl);
   }
@@ -79,7 +79,7 @@ export class AuthController {
       path: '/',
     });
 
-    return res.redirect(`${this.configService.get('FRONTEND_URL', 'http://localhost:3000')}/login/success`);
+    return res.redirect(`${this.configService.get('FRONTEND_BASE_URL', 'http://localhost:3000')}/login/success`);
   }
 
   /**
