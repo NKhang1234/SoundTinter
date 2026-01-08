@@ -1,0 +1,243 @@
+services:
+  minio:
+    image: quay.io/minio/minio
+    container_name: minio
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":${PORT_MINIO_CONSOLE}"
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_KEY}
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio.rule=Host(`minioConsole.dev.localhost`)" 
+      - "traefik.http.services.minio.loadbalancer.server.port=${PORT_MINIO_CONSOLE}"
+
+  dynamodb-local:
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    user: root
+    image: "amazon/dynamodb-local:latest"
+    container_name: dynamodb-local
+    volumes:
+     - dynamodb_data:/home/dynamodblocal/data
+    working_dir: /home/dynamodblocal
+
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin:latest
+    container_name: dynamodb-admin
+    environment:
+      DYNAMO_ENDPOINT: http://dynamodb-local:${PORT_DYNAMODB_LOCAL}
+    depends_on:
+      - dynamodb-local
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dynamodb-admin.rule=Host(`dynamodbAdmin.dev.localhost`)"
+      - "traefik.http.services.dynamodb-admin.loadbalancer.server.port=${PORT_DYNAMODB_ADMIN}"
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rabbitmq.rule=Host(`rabbitmqUI.dev.localhost`)"
+      - "traefik.http.services.rabbitmq.loadbalancer.server.port=${PORT_RABBITMQ_MANAGEMENT}"
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_KEYCLOAK_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    env_file:
+      - .env
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: keycloak
+    command:
+      - start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_KEYCLOAK_DB}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN : ${KEYCLOAK_USER}
+      KEYCLOAK_ADMIN_PASSWORD : ${KEYCLOAK_PASSWORD}
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KC_HOSTNAME: keycloak.dev.localhost
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: unless-stopped
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://keycloak.dev.localhost:8080/health/ready"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 5
+    #   start_period: 60s
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=Host(`keycloak.dev.localhost`)"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=${PORT_KEYCLOAK}"
+
+  traefik:
+    image: traefik:v3.6
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "80:80"     # The HTTP port
+      - "443:443"   # The HTTPS port
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+
+    labels:
+      # Enable self‑routing
+      - "traefik.enable=true"
+
+      # Dashboard router
+      - "traefik.http.routers.dashboard.rule=Host(`traefikDashboard.dev.localhost`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+
+      # Basic‑auth middleware
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=nkHang1303:$$apr1$$jOl9Qcbx$$6I76/w.o3n81DLARXtneg0"
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web-bff:
+    build:
+      context: ./bffWeb
+      dockerfile: Dockerfile.dev
+    container_name: web-bff
+    depends_on:
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web-bff.rule=Host(`web.localhost`)"
+      - "traefik.http.routers.web-bff.entrypoints=web"
+      - "traefik.http.services.web-bff.loadbalancer.server.port=${PORT_BFF_WEB}"
+
+  analyst-service:
+    build:
+      context: ./analystService
+      dockerfile: Dockerfile.dev
+    depends_on:
+      - minio
+      - dynamodb-local
+      - rabbitmq
+    volumes:
+      - ./analystService:/app
+    environment:
+      - APP_ENV=dev
+      - LOGGING_LEVEL=info
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.analyst-service.rule=Host(`analyst.dev.localhost`)" 
+      - "traefik.http.routers.analyst-service.entrypoints=web"
+      - "traefik.http.services.analyst-service.loadbalancer.server.port=${PORT_ANALYST_SERVICE}"
+
+  filter-service:
+    build:
+      context: ./filterService
+      dockerfile: Dockerfile.dev
+    depends_on:
+      - minio
+      - rabbitmq
+    volumes:
+      - ./filterService:/app
+    environment:
+      - APP_ENV=dev
+      - LOGGING_LEVEL=info
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.filter-service.rule=Host(`filter.dev.localhost`)"
+      - "traefik.http.routers.filter-service.entrypoints=web"
+      - "traefik.http.services.filter-service.loadbalancer.server.port=${PORT_FILTER_SERVICE}"
+
+  upload-service:
+    build:
+      context: ./uploadService
+      dockerfile: Dockerfile.dev
+    depends_on:
+      - minio
+      - rabbitmq
+    volumes:
+      - ./uploadService:/app
+    environment:
+      - APP_ENV=dev
+      - LOGGING_LEVEL=info
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.upload-service.rule=Host(`upload.dev.localhost`)"
+      - "traefik.http.routers.upload-service.entrypoints=web"
+      - "traefik.http.services.upload-service.loadbalancer.server.port=${PORT_UPLOAD_SERVICE}"
+
+  mapping-service:
+    build:
+      context: ./mappingService
+      dockerfile: Dockerfile.dev
+    depends_on:
+      - dynamodb-local
+      - rabbitmq
+    volumes:
+      - ./mappingService:/app
+    environment:
+      - APP_ENV=dev
+      - LOGGING_LEVEL=info
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mapping-service.rule=Host(`mapping.dev.localhost`)"
+      - "traefik.http.routers.mapping-service.entrypoints=web"
+      - "traefik.http.services.mapping-service.loadbalancer.server.port=${PORT_MAPPING_SERVICE}"
+
+volumes:
+  minio_data:
+  redis-data:
+  dynamodb_data:
+  rabbitmq_data:
+  postgres_data:

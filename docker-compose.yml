@@ -1,0 +1,31 @@
+services:
+  analyst-service:
+    build:
+      context: ./analystService
+      dockerfile: Dockerfile
+    container_name: analyst-service
+    env_file:
+      - .env
+  filter-service:
+    build:
+      context: ./filterService
+      dockerfile: Dockerfile
+    container_name: filter-service
+    env_file:
+      - .env
+
+  upload-service:
+    build:
+      context: ./uploadService
+      dockerfile: Dockerfile
+    container_name: upload-service
+    env_file:
+      - .env
+
+  mapping-service:
+    build:
+      context: ./mappingService
+      dockerfile: Dockerfile
+    container_name: mapping-service
+    env_file:
+      - .env
