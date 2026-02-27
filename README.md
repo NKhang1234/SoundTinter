@@ -1,4 +1,4 @@
-# 🎵 Song-Driven Image Filter Platform - SoundTinter
+# 🎵 SoundTinter
 
 A distributed microservice-based system that analyzes a song's vibe and
 automatically applies a matching image filter to a user-provided photo.
